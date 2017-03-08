@@ -1,37 +1,32 @@
 #include <cstdlib>
 #include <iostream>
+#include <iomanip>
 
 using namespace std;
 
-int addr(int r, int c, int cols){
+int b_addr(int r, int c, int bw){
     // Helper function to index from human-indices to c++ vector notation
-    return (r-1)*cols+(c-1);
+    int rows = 3 * bw + 1;
+    int row = 1 + 2 * bw - c + r;
+    int ret = (c-1)*rows+(row-1);
+    // cout << "Original coord: " << r << "-" << c;
+    // cout << "   Banded row: " << row << "\tReturn value: " << ret << endl;
+    return ret;
 }
 
-int b_addr(int r, int c, int cols){
-    // Helper function to index from human-indices to c++ vector notation
-    int col = 1 + (cols+1)/2 + c - r;
-    cout << "Original coord: " << r << "-" << c;
-    cout << "   Banded column: " << col << endl;
-    return (r-1)*cols+(c-1);
-}
-
-int addr(int r){
-    // Helper function to index from human-indices to c++ vector notation
-    return r-1;
-}
-
-void print_m(double* M, int rows){
-    for (int c = 1; c < rows + 1; c++){
-        for (int r = 1; r < rows + 1; r++){
-            cout << M[addr(c, r, rows)] << "\t";
+void print_banded_m(double* M, int rows, int cols){
+    // Transposing is necessary to print the matrix properly on screen
+    for (int r = 1; r < rows + 1; r++){
+        for (int c = 1; c < cols + 1; c++){
+            // cout << addr(r, c, rows) << endl;
+            cout << setw(12) << M[(c-1)*rows+(r-1)] << "\t";
         }
         cout << endl << endl;
     }
 }
 
-void print_v(double* M, int rows){
-    for (int r = 1; r < rows + 1; r++){
-        cout << M[addr(r)] << endl;
+void print_v(double* M, int cols){
+    for (int c = 0; c < cols; c++){
+        cout << M[c] << endl;
     }
 }
