@@ -8,6 +8,8 @@ using namespace std;
 #include "helpers.h"
 
 int main(int argc, char* argv[]) {
+    // Set output verbosity
+    bool verbose = true;
 
     // Units are converted from those supplied to SI units
     double L = atof(argv[1]) * 0.001;
@@ -18,6 +20,9 @@ int main(int argc, char* argv[]) {
     const int cols = N*dof;
     const int bw = 4;
     const int rows = 3 * bw + 1;
+    const int q_x = 0;
+    const int q_y = 1000;
+    const int F_centre = 1000;
 
     if(n % 2 != 0){
       cout << "The number of elements must be even to ensure a node is present"
@@ -29,15 +34,21 @@ int main(int argc, char* argv[]) {
     cout << "Matrix rows: " << rows << "\tMatrix cols: " << cols << endl;
 
     double rho = 7850;
-    double * K_ele = new double[rows * dof];
-    double * K = new double[cols*rows];
+    double * K_ele = new double[rows * dof]();
+    double * K = new double[cols*rows]();
+    double * F = new double[cols]();
 
     mk_banded_k_ele(argv, l, K_ele, ele, bw);
-    // cout << endl << endl;
     mk_banded_k_mat(K_ele, K, N, dof, rows, bw);
-    print_banded_m(K_ele, rows, dof);
-    print_banded_m(K, rows, dof*N);
-
+    mk_F_mat(F, N, dof, q_x, q_y, l); // TODO
+    if (verbose == true){
+        print_banded_m(K_ele, rows, dof);
+        print_banded_m(K, rows, dof*N);
+        print_v(F, cols);
+    }
+    delete [] K_ele;
+    delete [] K;
+    delete [] F;
 }
 //
 // int full_m_solve(int argc, char* argv[]) {
