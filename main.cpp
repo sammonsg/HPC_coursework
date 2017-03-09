@@ -6,10 +6,11 @@ using namespace std;
 
 #include "mat_builder.h"
 #include "helpers.h"
+#include "solve.h"
 
 int main(int argc, char* argv[]) {
     // Set output verbosity
-    bool verbose = true;
+    bool verbose = false;
 
     // Units are converted from those supplied to SI units
     double L = atof(argv[1]) * 0.001;
@@ -31,8 +32,6 @@ int main(int argc, char* argv[]) {
     }
     double l = L/n;
 
-    cout << "Matrix rows: " << rows << "\tMatrix cols: " << cols << endl;
-
     double rho = 7850;
     double * K_ele = new double[rows * dof]();
     double * K = new double[cols*rows]();
@@ -42,10 +41,12 @@ int main(int argc, char* argv[]) {
     mk_banded_k_mat(K_ele, K, N, dof, rows, bw);
     mk_F_mat(F, N, dof, q_x, q_y, l); // TODO
     if (verbose == true){
+        cout << "Matrix rows: " << rows << "\tMatrix cols: " << cols << endl;
         print_banded_m(K_ele, rows, dof);
         print_banded_m(K, rows, dof*N);
         print_v(F, cols);
     }
+    solve_static(K, F, cols, bw);
     delete [] K_ele;
     delete [] K;
     delete [] F;
