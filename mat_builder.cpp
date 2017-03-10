@@ -5,18 +5,6 @@
 
 using namespace std;
 
-
-void mk_banded_k_mat(double* K_ele, double* K, int N, int dof, int rows, int bw){
-    int K_ele_len = rows * 3;
-    // cout << K_ele_len << " and " << N << endl;
-    for (int node = 0; node < N; node++){
-        for (int element = 0; element < K_ele_len; element++){
-            // cout << element + node * K_ele_len << endl;
-            K[element + node * K_ele_len] = K_ele[element];
-        }
-    }
-}
-
 void mk_banded_k_ele(char* argv[], double l, double* K_ele, int rows, int bw){
     // Make temporary 13 x 6 matrix
     double * K = new double[rows * 6]();
@@ -56,6 +44,23 @@ void mk_banded_k_ele(char* argv[], double l, double* K_ele, int rows, int bw){
     delete [] K;
 }
 
+
+void mk_banded_k_mat(char* argv[], double l, double* K, int N, int dof, int rows, int bw){
+    int K_ele_len = rows * dof;
+    double * K_ele = new double[K_ele_len]();
+    mk_banded_k_ele(argv, l, K_ele, rows, bw);
+
+    // cout << K_ele_len << " and " << N << endl;
+    for (int node = 0; node < N; node++){
+        for (int element = 0; element < K_ele_len; element++){
+            // cout << element + node * K_ele_len << endl;
+            K[element + node * K_ele_len] = K_ele[element];
+        }
+    }
+    delete [] K_ele;
+}
+
+
 void mk_F_ele(double* F, double q_x, double q_y, double l, int dof){
     double * F_ele = new double[dof*2]();
 
@@ -87,4 +92,12 @@ void mk_F_mat(double* F, int N, int dof, double q_x, double q_y, int F_centre, d
     }
     F[(N * dof - 1) / 2] += F_centre;
     delete [] F_node;
+}
+
+void mk_M_mat(char* argv[], double* M, int N, double l, int dof){
+    for (int n = 0; n < N; n++){
+        M[0 + n * dof] = 0.5;
+        M[1 + n * dof] = 0.5;
+        M[2 + n * dof] = l * l / 24.0;
+    }
 }

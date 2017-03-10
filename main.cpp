@@ -9,6 +9,10 @@ using namespace std;
 #include "solve.h"
 
 int main(int argc, char* argv[]) {
+    // Get exercise number
+    int ex = atoi(argv[6]);
+    cout << "Exercise " << ex << endl;
+
     // Set output verbosity
     bool verbose = false;
 
@@ -33,23 +37,41 @@ int main(int argc, char* argv[]) {
     double l = L/n;
 
     double rho = 7850;
-    double * K_ele = new double[rows * dof]();
+
+    // Allocate memory for K, F and M. There is negligible slowdown for the
+    // exercises where M is not neeed.
     double * K = new double[cols*rows]();
     double * F = new double[cols]();
+    // The M matrix is a diagonal matrix, so it can be expressed as a vector
+    double * M = new double[cols]();
+    mk_banded_k_mat(argv, l, K, N, dof, rows, bw);
+    mk_F_mat(F, N, dof, q_x, q_y, F_centre, l);
+    mk_M_mat(argv, M, N, l, dof);
+    // mk_M_mat(char* argv[], double* M, int N, double l, int dof)
 
-    mk_banded_k_ele(argv, l, K_ele, rows, bw);
-    mk_banded_k_mat(K_ele, K, N, dof, rows, bw);
-    mk_F_mat(F, N, dof, q_x, q_y, F_centre, l); // TODO
     if (verbose == true){
         cout << "Matrix rows: " << rows << "\tMatrix cols: " << cols << endl;
-        print_banded_m(K_ele, rows, dof);
         print_banded_m(K, rows, dof*N);
         print_v(F, cols);
+        print_v(M, cols);
     }
-    solve_static(K, F, cols, bw);
-    delete [] K_ele;
+    if (ex == 1){
+        solve_static(K, F, cols, bw);
+    }
+    if (ex == 2){
+        if (argc == 10){
+            solve_explicit(argv, K, F, M, rows);
+        }
+        else {
+            cout << "Error, insufficient args supplied for exercise 2" << endl;
+        }
+    }
+
+
     delete [] K;
     delete [] F;
+    delete [] M;
+    return 0;
 }
 //
 // int full_m_solve(int argc, char* argv[]) {
