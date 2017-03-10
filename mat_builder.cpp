@@ -77,7 +77,7 @@ void mk_F_ele(double* F, double q_x, double q_y, double l, int dof){
 
 }
 
-void mk_F_mat(double* F, int N, int dof, double q_x, double q_y, double l){
+void mk_F_mat(double* F, int N, int dof, double q_x, double q_y, int F_centre, double l){
     double * F_node = new double[dof]();
     mk_F_ele(F_node, q_x, q_y, l, dof);
     for (int a = 0; a < N; a++){
@@ -85,5 +85,6 @@ void mk_F_mat(double* F, int N, int dof, double q_x, double q_y, double l){
                 F[dir + a * dof] += F_node[dir];
         }
     }
+    F[(N * dof - 1) / 2] += F_centre;
     delete [] F_node;
 }

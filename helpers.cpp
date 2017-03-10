@@ -9,8 +9,6 @@ int b_addr(int r, int c, int bw){
     int rows = 3 * bw + 1;
     int row = 1 + 2 * bw - c + r;
     int ret = (c-1)*rows+(row-1);
-    // cout << "Original coord: " << r << "-" << c;
-    // cout << "   Banded row: " << row << "\tReturn value: " << ret << endl;
     return ret;
 }
 

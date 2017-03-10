@@ -37,9 +37,9 @@ int main(int argc, char* argv[]) {
     double * K = new double[cols*rows]();
     double * F = new double[cols]();
 
-    mk_banded_k_ele(argv, l, K_ele, ele, bw);
+    mk_banded_k_ele(argv, l, K_ele, rows, bw);
     mk_banded_k_mat(K_ele, K, N, dof, rows, bw);
-    mk_F_mat(F, N, dof, q_x, q_y, l); // TODO
+    mk_F_mat(F, N, dof, q_x, q_y, F_centre, l); // TODO
     if (verbose == true){
         cout << "Matrix rows: " << rows << "\tMatrix cols: " << cols << endl;
         print_banded_m(K_ele, rows, dof);
