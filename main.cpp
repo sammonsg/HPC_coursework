@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
     cout << "Exercise " << ex << endl;
 
     // Set output verbosity
-    bool verbose = false;
+    bool verbose = 0;
 
     // Units are converted from those supplied to SI units
     double L = atof(argv[1]) * 0.001;
@@ -49,6 +49,7 @@ int main(int argc, char* argv[]) {
     mk_M_mat(argv, M, N, l, dof);
     // mk_M_mat(char* argv[], double* M, int N, double l, int dof)
 
+
     if (verbose == true){
         cout << "Matrix rows: " << rows << "\tMatrix cols: " << cols << endl;
         print_banded_m(K, rows, dof*N);
@@ -57,10 +58,12 @@ int main(int argc, char* argv[]) {
     }
     if (ex == 1){
         solve_static(K, F, cols, bw);
+        print_v(F, cols);
+
     }
     if (ex == 2){
         if (argc == 10){
-            solve_explicit(argv, K, F, M, rows);
+            solve_explicit(argv, K, F, M, cols, bw);
         }
         else {
             cout << "Error, insufficient args supplied for exercise 2" << endl;

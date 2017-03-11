@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdlib>
+#include <cmath>
 
 using namespace std;
 
@@ -27,28 +28,30 @@ void solve_static(double* K, double* F, int eqs, int bw){
     int rows = 3 * bw + 1;
     F77NAME(dgbmv)('N', eqs, eqs, bw, bw, 1, K, rows, F, 1, 1, y, 1);
     F77NAME(dgbsv) (eqs, bw, bw, 1, K, rows, ipiv, F, eqs, &info);
-    print_v(F, eqs);
 }
 
-void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs){
-    double T = atof(argv[7]);
+void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw){
+    // Recover from args the core variables
+    double l = atof(argv[1]) * 0.001 / atoi(argv[2]);
+    const double A = atof(argv[3]) * pow(10, -6);
+    const int rows = 3 * bw + 1;
+    const double T = atof(argv[7]);
     int iters = atof(argv[8]);
     double t_step = 1.0 / iters;
-    double rho = atof(argv[9]);
+    const double rho = atof(argv[9]);
+    const double M_fact = rho * A * l;
 
+    // Iterate x steps until T is reached
     for (int iter = 0; iter < iters; iter++){
         double t = iter * t_step;
-        double * K = new double[eqs * 13]();
-        double * F = new double[eqs]();
-        double * M = new double[eqs]();
-        // WORK IN PROGRESS
 
-        // copy_n(K, eqs * 13, K_ref);
-        // copy_n(F, eqs, F_ref);
-        // copy_n(M, eqs, M_ref);
-        // print_banded_m(K, 13, eqs);
-        // print_banded_m(K_ref, 13, eqs);
-        //////////////////
+        // Clone
+        // double * K = new double[eqs * rows]();
+        // double * F = new double[eqs]();
+        // double * M = new double[eqs]();
+        //
+        // copy_n(F_ref, eqs, F);
+        // copy_n(M_ref, eqs, M);
         cout << "The time is: " << t << endl;
     }
 }
