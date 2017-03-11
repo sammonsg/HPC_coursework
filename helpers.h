@@ -5,6 +5,9 @@ void print_v(double* M, int rows);
 
 double* clone_vector(double* master, int length);
 
-void vect_vect_multiply(double* L, double* R, double* out, int l);
-void banded_vector_multiply(double* L, double* R, double* out, int l, int bw);
-void vect_vect_addition(double* L, double* R, double* out, int l, int sign);
+
+double* m_diag_add(double* L, double* R, double r_fact, int l, int bw);
+// double* vect_vect_multiply(double* L, double* R, int l);
+// double* matrix_vector_multiply(double* L, double* R, int l, int bw);
+// double* v_v_addition(double* L, double l_fact, double* R, double r_fact int l);
+//

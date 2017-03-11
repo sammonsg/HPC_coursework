@@ -37,21 +37,33 @@ void print_v(double* M, int cols){
     }
 }
 
-void vect_vect_multiply(double* L, double* R, double* out, int l){
-    for (int a = 0; a < l; a++){
-        out[a] =  L[a] * R[a];
-    }
-}
+// double*  vect_vect_multiply(double* L, double* R, int l){
+//     double* ret = new double[l]();
+//     for (int a = 0; a < l; a++){
+//         out[a] =  L[a] * R[a];
+//     }
+//     return ret;
+// }
+//
+// double*  matrix_vector_multiply(double* L, double* R, int l, int bw){
+//     int rows = 3 * bw + 1;
+//
+//     for (int a = 0; a < l; a++){
+//         out[a] =  L[a * rows + 2 * bw] * R[a];
+//     }
+// }
 
-void matrix_vector_multiply(double* L, double* R, double* out, int l, int bw){
+double* m_diag_add(double* L, double* R, double r_fact, int l, int bw){
     int rows = 3 * bw + 1;
+    double* ret = clone_vector(L, l * rows);
     for (int a = 0; a < l; a++){
-        out[a] =  L[a * rows + 2 * bw] * R[a];
+        ret[a * rows + 2 * bw] += R[a] * r_fact;
     }
+    return ret;
 }
 
-void vect_vect_addition(double* L, double* R, double* out, int l, int sign){
-    for (int a = 0; a < l; a++){
-        out[a] = L[a] + (sign) * R[a];
-    }
-}
+// double*  v_v_addition(double* L, double l_fact, double* R, double r_fact int l){
+//     for (int a = 0; a < l; a++){
+//         out[a] = L[a] + r_fact * R[a];
+//     }
+// }

@@ -40,12 +40,27 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     double t_step = 1.0 / iters;
     const double rho = atof(argv[9]);
     const double M_fact = rho * A * l;
+    cout << " RHO A L = " << M_fact << endl;
+    const double t2_fact = -2 / (t_step * t_step);
+    cout << " time = " << t2_fact << endl;
+    double* u_past = new double[eqs]();
+    double* u_pres = new double[eqs]();
+    double* u_futu = new double[eqs]();
+
 
     // Iterate x steps until T is reached
-    for (int iter = 0; iter < iters; iter++){
+    for (int iter = 0; iter < 1; iter++){
+        print_banded_m(K_ref, rows, eqs);
+
+        double* X = m_diag_add(K_ref, M_ref, t2_fact * M_fact, eqs, bw);
+        print_v(M_ref, eqs);
+
+        print_banded_m(X, rows, eqs);
+
         double t = iter * t_step;
 
         // Clone
+
         // double * K = new double[eqs * rows]();
         // double * F = new double[eqs]();
         // double * M = new double[eqs]();
