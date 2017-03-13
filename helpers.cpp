@@ -24,10 +24,18 @@ void print_banded_m(double* M, int rows, int cols){
     }
 }
 
-double* clone_vector(double* master, int length){
-    double* cp = new double[length]();
-    copy_n(master, length, cp);
-    return cp;
+void clone_vector(double* master, double* target, int length){
+    for (int a = 0; a < length; a++){
+        target[a] = master[a];
+    }
+}
+
+void shift_vec(double *past, double *pres, double *futu){
+   int temp = *past;
+   *past = *pres;
+   *pres = *futu;
+   *futu = temp;
+   return;
 }
 
 void print_v(double* M, int cols){
@@ -37,30 +45,19 @@ void print_v(double* M, int cols){
     }
 }
 
-// double*  vect_vect_multiply(double* L, double* R, int l){
-//     double* ret = new double[l]();
-//     for (int a = 0; a < l; a++){
-//         out[a] =  L[a] * R[a];
-//     }
-//     return ret;
-// }
-//
-// double*  matrix_vector_multiply(double* L, double* R, int l, int bw){
-//     int rows = 3 * bw + 1;
-//
-//     for (int a = 0; a < l; a++){
-//         out[a] =  L[a * rows + 2 * bw] * R[a];
-//     }
-// }
-
-double* m_diag_add(double* L, double* R, double r_fact, int l, int bw){
+void m_diag_add(double* L, double* R, double r_fact, int l, int bw){
     int rows = 3 * bw + 1;
-    double* ret = clone_vector(L, l * rows);
     for (int a = 0; a < l; a++){
-        ret[a * rows + 2 * bw] += R[a] * r_fact;
+        L[a * rows + 2 * bw] += R[a] * r_fact;
     }
-    return ret;
 }
+
+// void vec(double* L, double* R, double r_fact, int l, int bw){
+//     int rows = 3 * bw + 1;
+//     for (int a = 0; a < l; a++){
+//         L[a * rows + 2 * bw] += R[a] * r_fact;
+//     }
+// }
 
 // double*  v_v_addition(double* L, double l_fact, double* R, double r_fact int l){
 //     for (int a = 0; a < l; a++){
