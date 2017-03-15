@@ -5,6 +5,10 @@
 
 using namespace std;
 
+#include "lapack_c.h"
+#include "helpers.h"
+
+
 void mk_banded_k_ele(char* argv[], double l, double* K_ele, int rows, int bw){
     // Make temporary 13 x 6 matrix
     double * K = new double[rows * 6]();
@@ -91,6 +95,7 @@ void mk_F_mat(double* F, int N, int dof, double q_x, double q_y, int F_centre, d
         }
     }
     F[(N * dof - 1) / 2] += F_centre;
+
     delete [] F_node;
 }
 
@@ -100,4 +105,18 @@ void mk_M_mat(char* argv[], double* M, int N, double l, int dof){
         M[1 + n * dof] = 0.5;
         M[2 + n * dof] = l * l / 24.0;
     }
+}
+
+void mk_km_mat(double* KM, double* K_ref, double* M, int eqs, int bw){
+    int banded_rows = 3 * bw + 1;
+    int rows = 2 * bw + 1;
+    double * KM_full = new double[eqs * banded_rows];
+    F77NAME(dcopy) (banded_rows * eqs, K_ref, 1, KM_full, 1);
+    for (int c = 0; c < eqs; c++){
+        for (int r = 0; r < rows; r++){
+            KM[r + c * rows] = KM_full[r + 4 + c * banded_rows];
+        }
+        KM[c * rows + bw] += -2 * M[c];
+    }
+    delete [] KM_full;
 }

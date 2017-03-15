@@ -7,26 +7,23 @@ all:
 	task5
 
 task1: compile
-	@./a.out 10000 4 12000 172800000 210000 1
+	@./a.out 10000 24 12000 14400000 210000 1
 	# Do things
 
 task2: compile
-	@./a.out 10000 4 12000 172800000 210000 2 1 100 7850
+	@./a.out 10000 24 12000 14400000 210000 2 1 20000 7850
 	# Do things
 
-task3:
-	compile
-	@./a.out 10000 4 12000 172800000 210000 3 1 10 7850
+task3: compile
+	@./a.out 10000 4 12000 14400000 210000 3 1 10 7850
 	# Do things
 
-task4:
-	compile
-	@./a.out 10000 4 12000 172800000 210000 4
+task4: compile
+	@./a.out 10000 4 12000 14400000 210000 4
 	# Do things
 
-task5:
-	compile
-	@./a.out 10000 4 12000 172800000 210000 5
+task5: compile
+	@./a.out 10000 4 12000 14400000 210000 5
 	# Do things
 
 clean:

@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 
 using namespace std;
 
@@ -30,12 +31,12 @@ void clone_vector(double* master, double* target, int length){
     }
 }
 
-void shift_vec(double *past, double *pres, double *futu){
-   int temp = *past;
-   *past = *pres;
-   *pres = *futu;
-   *futu = temp;
-   return;
+void shift_vec(double*& past, double*& pres, double*& futu){
+    double* temp = past;
+    past = pres;
+    pres = futu;
+    futu = temp;
+    return;
 }
 
 void print_v(double* M, int cols){
@@ -51,16 +52,3 @@ void m_diag_add(double* L, double* R, double r_fact, int l, int bw){
         L[a * rows + 2 * bw] += R[a] * r_fact;
     }
 }
-
-// void vec(double* L, double* R, double r_fact, int l, int bw){
-//     int rows = 3 * bw + 1;
-//     for (int a = 0; a < l; a++){
-//         L[a * rows + 2 * bw] += R[a] * r_fact;
-//     }
-// }
-
-// double*  v_v_addition(double* L, double l_fact, double* R, double r_fact int l){
-//     for (int a = 0; a < l; a++){
-//         out[a] = L[a] + r_fact * R[a];
-//     }
-// }
