@@ -26,9 +26,8 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     double t_step = 1.0 / iters;
     const double rho = atof(argv[9]);
 
-    // F is the holder of the RHS terms as they are added and hold the u(t+1)
-    // solution at the end of each solve iteration, but will then have its
-    // pointer overwritten to point at the to-be-discareded u(t-1)
+    // F is the holder of the RHS terms as they are added and hold the u(t+1) solution at the end of each solve
+    // iteration, but will then have its pointer overwritten to point at the to-be-discareded u(t-1)
     double* F = new double[eqs]();
     double* u_past = new double[eqs]();
     double* u_pres = new double[eqs]();
@@ -37,16 +36,14 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     int* ipiv = new int[eqs]();
     int info = 0;
 
-    // The M_ref matrix is unmultiplied by its factor rho * A * l, so it is
-    // copied and multiplied at this stage. It gets also multiplied by 1 / ∆t^2
-    // as all elements in the equation present this factor
+    // The M_ref matrix is unmultiplied by its factor rho * A * l, so it is copied and multiplied at this stage.
+    // It gets also multiplied by 1 / ∆t^2 as all elements in the equation present this factor
     const double t_fact =  rho * A * l / (t_step * t_step);
     double* M = new double[eqs]();
     F77NAME(dcopy) (eqs, M_ref, 1, M, 1);
     F77NAME(dscal) (eqs, t_fact, M, 1);
 
-    // Create matrix (K - 2 * M) and remove the top rows of zeros
-    // that are unnecesarily present for this solve routine
+    // Create matrix (K - 2 * M) and remove the top rows of zeros that are unnecesarily present for this solve routine
     double* KM = new double[eqs * rows]();
     mk_km_mat(KM, K_ref, M, eqs, bw);
 
@@ -74,11 +71,13 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
             cout << "ERROR, dgbsv threw an exception: " << info << endl;
         }
 
-        // Instead of reallocating memory or inserting values in each vector,
-        // swap the pointers to the arrays (which are of same size)
+        // Instead of reallocating memory or inserting values in each vector, swap the pointers
+        // to the arrays (which are of same size)
         shift_vec(u_past, u_pres, F);
     }
 
-    // As per exercise 1, write the solutio to the F vector passed in by main()
+    // As per exercise 1, write the solution to the F vector passed in by main()
     F77NAME(dcopy) (eqs, u_pres, 1, F_ref, 1);
 }
+
+// void solve_implicit(char* argv[], double* K_ref, double* F_ref, double*

@@ -68,9 +68,8 @@ void mk_banded_k_mat(char* argv[], double l, double* K, int N, int dof, int rows
 void mk_F_ele(double* F, double q_x, double q_y, double l, int dof){
     double * F_ele = new double[dof*2]();
 
-    // From a computational point of view, this step is unnecessary due to both
-    // boundary condition fully restrained, but if this was not the case, the
-    // elemental forces are available as below
+    // From a computational point of view, this step is unnecessary due to both boundary condition fully restrained,
+    // but if this was not the case, the elemental forces are available as below
     F_ele[0] = 0.5 * q_x * l;
     F_ele[1] = 0.5 * q_y * l;
     F_ele[2] = q_y * l * l / 12.0;

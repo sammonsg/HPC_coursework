@@ -40,8 +40,7 @@ int main(int argc, char* argv[]) {
 
     double rho = 7850;
 
-    // Allocate memory for K, F and M. There is negligible slowdown for the
-    // exercises where M is not neeed.
+    // Allocate memory for K, F and M. There is negligible slowdown for the exercises where M is not neeed.
     double * K = new double[cols*rows]();
     double * F = new double[cols]();
     // The M matrix is a diagonal matrix, so it can be expressed as a vector
