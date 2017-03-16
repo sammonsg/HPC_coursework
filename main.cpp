@@ -67,16 +67,16 @@ int main(int argc, char* argv[]) {
             solve_explicit(argv, K, F, M, cols, bw);
         }
         else {
-            cout << "Error, insufficient args supplied for exercise 2" << endl;
+            cout << "Error, wrong number of args supplied for exercise 2" << endl;
         }
     }
 
-    if (ex == 2){
+    if (ex == 3){
         if (argc == 10){
-            solve_explicit(argv, K, F, M, cols, bw);
+            solve_implicit(argv, K, F, M, cols, bw, beta, gamma);
         }
         else {
-            cout << "Error, insufficient args supplied for exercise 2" << endl;
+            cout << "Error, wrong number of args supplied for exercise 3" << endl;
         }
     }
 

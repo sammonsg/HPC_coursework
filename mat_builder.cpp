@@ -119,3 +119,20 @@ void mk_km_mat(double* KM, double* K_ref, double* M, int eqs, int bw){
     }
     delete [] KM_full;
 }
+
+void mk_keff_mat(double* Keff, double* K_ref, double* M, double b_dt2, int eqs, int bw){
+    int rows = 3 * bw + 1;
+    F77NAME(dcopy) (rows * eqs, K_ref, 1, Keff, 1);
+    for (int c = 0; c < eqs; c++){
+        Keff[2 * bw + c * rows] += M[c] * b_dt2;
+    }
+}
+
+
+
+
+
+
+
+
+// stop

@@ -18,8 +18,7 @@ void print_banded_m(double* M, int rows, int cols){
     cout << endl << cols << " by " << rows << " matrix, transposed:" << endl;
     for (int r = 1; r < rows + 1; r++){
         for (int c = 1; c < cols + 1; c++){
-            // cout << addr(r, c, rows) << endl;
-            cout << setw(14) << M[(c-1)*rows+(r-1)];
+            cout << setw(13) << M[(c-1)*rows+(r-1)];
         }
         cout << endl << endl;
     }
@@ -29,6 +28,13 @@ void clone_vector(double* master, double* target, int length){
     for (int a = 0; a < length; a++){
         target[a] = master[a];
     }
+}
+
+void shift_vec(double*& pres, double*& futu){
+    double* temp = pres;
+    pres = futu;
+    futu = temp;
+    return;
 }
 
 void shift_vec(double*& past, double*& pres, double*& futu){

@@ -8,6 +8,10 @@ using namespace std;
 #include "mat_builder.h"
 #include "lapack_c.h"
 
+void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double b_dt,
+                      double b_dt2, double c_a0);
+void a1_solve_routine(double* u0, double* u1, double* v0, double* a0, double b_dt, double b_dt2, double c_a0);
+void v1_solve_routine(double* v0, double* a0, double* a1, double dt, double gmm);
 
 void solve_static(double* K, double* F, int eqs, int bw){
     int info = 0;
@@ -80,4 +84,76 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     F77NAME(dcopy) (eqs, u_pres, 1, F_ref, 1);
 }
 
-// void solve_implicit(char* argv[], double* K_ref, double* F_ref, double*
+void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw, double bt, double gmm){
+    // Get from args the core variables and recalculate values
+    double l = atof(argv[1]) * 0.001 / atoi(argv[2]);
+    const double A = atof(argv[3]) * pow(10, -6);
+    const int rows = 2 * bw + 1;
+    const int K_rows = 3 * bw + 1;
+    const double T = atof(argv[7]);
+    int iters = atof(argv[8]);
+    double dt = 1.0 / iters;
+    const double rho = atof(argv[9]);
+
+    // Calculate common coefficients
+    double b_dt = 1 / (bt * dt);
+    double b_dt2 = b_dt / dt;
+    double c_a0 = 1 / (2 * bt) - 1;
+
+    // Create Keff matrix and remove the top rows of zeros that are unnecesarily present for this solve routine
+    double* Keff = new double[eqs * K_rows]();
+    mk_keff_mat(Keff, K_ref, M_ref, b_dt2, eqs, bw);
+    print_banded_m(Keff, K_rows, eqs);
+
+    // Position vectors, u0 = u(t), u1 = u(t+1)
+    double* u0 = new double[eqs]();
+    double* u1 = new double[eqs]();
+
+    // Velocity vectors, v0 = v(t), v1 = v(t+1)
+    double* v0 = new double[eqs]();
+    double* v1 = new double[eqs]();
+
+    // Acceleration vectors, a0 = a(t), a1 = a(t+1)
+    double* a0 = new double[eqs]();
+    double* a1 = new double[eqs]();
+
+    double* temp = new double[eqs]();
+
+    for (int iter = 0; iter < iters + 1; iter++){
+        double t = iter * dt;
+        F77NAME(dcopy) (eqs, F_ref, 1, temp, 1);
+        // Scale by the time. Use min(t, 1) to get the effect of linearly increasing load until t=1 and then hold force
+        F77NAME(dscal) (eqs, min(t,1.0), temp, 1);
+
+        // Calculate u(t+1) into temp and copy into u1
+        u1_solve_routine(u0, v0, a0, temp, M_ref, Keff, b_dt, b_dt2, c_a0);
+        F77NAME(dcopy) (eqs, temp, 1, u1, 1);
+        // Calculate a(t+1) into temp and copy into a1
+        a1_solve_routine(u0, temp, v0, a0, b_dt, b_dt2, c_a0);
+        F77NAME(dcopy) (eqs, temp, 1, a1, 1);
+        // Calculate v(t+1) into temp and copy into v1
+        v1_solve_routine(v0, a0, temp, dt, gmm);
+        F77NAME(dcopy) (eqs, temp, 1, v1, 1);
+
+        // Swap pointers to get f(t+1) into f(t) position
+        shift_vec(u0, u1);
+        shift_vec(v0, v1);
+        shift_vec(a0, a1);
+    }
+    F77NAME(dcopy) (eqs, u0, 1, F_ref, 1);
+}
+
+void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double b_dt,
+                 double b_dt2, double c_a0){
+    // solve routine onto F
+}
+void a1_solve_routine(double* u0, double* u1, double* v0, double* a0, double b_dt, double b_dt2, double c_a0){
+
+    // Solve routine onto u1
+
+}
+void v1_solve_routine(double* v0, double* a0, double* a1, double dt, double gmm){
+
+    // Solve routine onto a1
+
+}
