@@ -65,6 +65,7 @@ int main(int argc, char* argv[]) {
     if (ex == 2){
         if (argc == 10){
             solve_explicit(argv, K, F, M, cols, bw);
+            print_pos_v(F, cols);
         }
         else {
             cout << "Error, wrong number of args supplied for exercise 2" << endl;
@@ -74,6 +75,7 @@ int main(int argc, char* argv[]) {
     if (ex == 3){
         if (argc == 10){
             solve_implicit(argv, K, F, M, cols, bw, beta, gamma);
+            print_pos_v(F, cols);
         }
         else {
             cout << "Error, wrong number of args supplied for exercise 3" << endl;

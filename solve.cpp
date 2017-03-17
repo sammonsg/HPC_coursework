@@ -27,7 +27,7 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     const int rows = 2 * bw + 1;
     const double T = atof(argv[7]);
     int iters = atof(argv[8]);
-    double t_step = 1.0 / iters;
+    double t_step = T / iters;
     const double rho = atof(argv[9]);
 
     // F is the holder of the RHS terms as they are added and hold the u(t+1) solution at the end of each solve
@@ -58,8 +58,8 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
 
         // Overwrite the previous iteration's t-1 positions with the F vector
         F77NAME(dcopy) (eqs, F_ref, 1, F, 1);
-        // and scale it by the iteration's force
-        F77NAME(dscal) (eqs, t, F, 1);
+        // and scale it by the iteration's time, but do not increase past t = 1.0s
+        F77NAME(dscal) (eqs, min(t,1.0), F, 1);
 
         // Multiply the t+0 position by the KM matrix and add to the force vector
         F77NAME(dgbmv)('t', eqs, eqs, bw, bw, -1, KM, rows, u_pres, 1, 1, F, 1);
@@ -99,7 +99,6 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     double* M = new double[eqs]();
     F77NAME(daxpy) (eqs, M_fact, M_ref, 1, M, 1);
 
-    print_banded_m(K_ref, K_rows, eqs);
 
     // Calculate common coefficients
     double b_dt = 1 / (bt * dt);
@@ -157,7 +156,6 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
         }
     }
     F77NAME(dcopy) (eqs, u0, 1, F_ref, 1);
-    print_pos_v(F_ref, eqs);
 }
 
 void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double b_dt,
@@ -172,21 +170,15 @@ void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, 
     // Add the u0 term to tmp, u0 scaled by 1/(β * dt * dt)
     F77NAME(daxpy) (eqs, b_dt2, u0, 1, tmp, 1);
 
-    // print_v(F, eqs);
 
     // Get F as result to Ax + y, then dump tmp
     F77NAME(dgbmv) ('n', eqs, eqs, 0, 0, 1, M, 1, tmp, 1, 1, F, 1);
 
 
-    // print_banded_m(Keff, K_rows, eqs);
-    // print_v(F, eqs);
     F77NAME(dcopy) (eqs * K_rows, Keff, 1, tmp, 1);
     // Solve the system into F
     F77NAME(dgbsv) (eqs, 4, 4, 1, tmp, K_rows, ipiv, F, eqs, &info);
     delete [] tmp;
-
-    // print_v(F, eqs);
-    // print_pos_v(F, eqs);
 
     if (info){
         cout << "An error occurred in dgbsv during solve of u1" << endl;

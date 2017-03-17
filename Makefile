@@ -15,7 +15,7 @@ task2: compile
 	# Do things
 
 task3: compile
-	@./a.out 10000 6 12000 14400000 210000 3 1 100 7850
+	@./a.out 10000 24 12000 14400000 210000 3 1 150000 7850
 	# Do things
 
 task4: compile

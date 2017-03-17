@@ -18,6 +18,7 @@ void mk_banded_k_ele(char* argv[], double l, double* K_ele, int rows, int bw){
     double I = atof(argv[4]) * pow(10, -12);
     double E = atof(argv[5]) * pow(10, 6);
 
+
     // K will be stored in lower-diagonal form, so will be the elemental form
     K[b_addr(1,1,bw)] = A*E/l;
     K[b_addr(4,1,bw)] = -K[b_addr(1,1,bw)];
