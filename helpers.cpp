@@ -52,6 +52,19 @@ void print_v(double* M, int cols){
     }
 }
 
+void print_pos_v(double* M, int cols){
+    if (cols % 3 != 0){
+        cout << "Cannot print" << endl;
+        return;
+    }
+    int rows = cols / 3;
+    cout << endl << "1 by " << cols << " vector, in coordinate form" << endl;
+    cout << setw(16) << "Node" << setw(16) << "x-disp" << setw(16) << "y-disp" << setw(16) << "noderotation" << endl;
+    for (int r = 0; r < rows; r++){
+        cout << setw(16) << r << setw(16) << M[3*r] << setw(16) << M[3*r+1] << setw(16) << M[3*r+2] << endl;
+    }
+}
+
 void m_diag_add(double* L, double* R, double r_fact, int l, int bw){
     int rows = 3 * bw + 1;
     for (int a = 0; a < l; a++){
