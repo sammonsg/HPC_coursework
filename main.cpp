@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
     }
     if (ex == 1){
         solve_static(K, F, cols, bw);
-        print_v(F, cols);
+        print_pos_v(F, cols);
 
     }
     if (ex == 2){

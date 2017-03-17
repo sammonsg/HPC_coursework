@@ -129,12 +129,15 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
 
     for (int iter = 0; iter < iters + 1; iter++){
         double t = iter * dt;
+
+
         F77NAME(dcopy) (eqs, F_ref, 1, temp, 1);
         // Scale by the time. Use min(t, 1) to get the effect of linearly increasing load until t=1 and then hold force
-        F77NAME(dscal) (eqs, min(t+dt,1.0), temp, 1);
+        F77NAME(dscal) (eqs, min(t+dt,1.00), temp, 1);
 
         // Calculate u(t+1) into temp and copy into u1
         u1_solve_routine(u0, v0, a0, temp, M, Keff, b_dt, b_dt2, c_a0, eqs, K_rows, ipiv, info);
+
         F77NAME(dcopy) (eqs, temp, 1, u1, 1);
 
         // Calculate a(t+1) into temp and copy into a1
@@ -204,5 +207,5 @@ void v1_solve_routine(double* v0, double* a0, double* a1, double dt, double gmm,
     F77NAME(daxpy) (eqs, dt*(1-gmm), a0, 1, a1, 1);
 
     // Add the v0 term
-    F77NAME(daxpy) (eqs, dt*(1-gmm), v0, 1, a1, 1);
+    F77NAME(daxpy) (eqs, 1, v0, 1, a1, 1);
 }
