@@ -7,6 +7,7 @@ using namespace std;
 #include "mat_builder.h"
 #include "helpers.h"
 #include "solve.h"
+#include "solve_parallel.h"
 
 int main(int argc, char* argv[]) {
     // Get exercise number
@@ -79,6 +80,15 @@ int main(int argc, char* argv[]) {
         }
         else {
             cout << "Error, wrong number of args supplied for exercise 3" << endl;
+        }
+    }
+    if (ex == 4){
+        if (argc == 10){
+            solve_explicit_parallel(argc, argv, K, F, M, cols, bw);
+            print_pos_v(F, cols);
+        }
+        else {
+            cout << "Error, wrong number of args supplied for exercise 4" << endl;
         }
     }
 
