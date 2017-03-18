@@ -19,7 +19,7 @@ run3:
 	# Do things
 
 run4:
-	@mpiexec -np 4 ./a.out 10000 6 12000 14400000 210000 4 1 100g000 7850
+	@mpiexec -np 4 ./a.out 10000 6 12000 14400000 210000 4 1 100000 7850
 	# Do things
 
 run5:
