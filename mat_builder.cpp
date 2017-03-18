@@ -129,11 +129,16 @@ void mk_keff_mat(double* Keff, double* K_ref, double* M, double b_dt2, int eqs, 
     }
 }
 
-
-
-
-
-
-
-
-// stop
+// void mk_truncated_K(char* argv[], double l, double* K, int dof, int rows, int bw, int begin, int end){
+//     int cols = end - begin + 1;
+//     int K_ele_len = rows * dof;
+//     double * K_ele = new double[K_ele_len]();
+//     offset = begin % 3;
+//     for (c = 0; c < cols; c++){
+//         int ref_column = (c+offset) % 3;
+//         for (r = 0; r < rows; r++){
+//             K[r + c * rows] = K_ele[r + ref_column * rows];
+//         }
+//     }
+//     delete [] K_ele;
+// }

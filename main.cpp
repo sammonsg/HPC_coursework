@@ -8,11 +8,26 @@ using namespace std;
 #include "helpers.h"
 #include "solve.h"
 #include "solve_parallel.h"
+#include <mpi.h>
+
 
 int main(int argc, char* argv[]) {
-    // Get exercise number
     int ex = atoi(argv[6]);
-    cout << "Exercise " << ex << endl;
+
+    int retval;
+    int rank = 0;
+    int cores;
+
+    if (ex > 3){
+        retval = MPI_Init(&argc, &argv);
+        int retval;
+        MPI_Comm_rank(MPI_COMM_WORLD,&rank ) ; // Get core number
+        MPI_Comm_size(MPI_COMM_WORLD,&cores ) ; // Get core count
+    }
+    if (rank == 0){
+    // Get exercise number
+        cout << "Exercise " << ex << endl;
+    }
 
     // Set output verbosity
     bool verbose = 0;
@@ -49,8 +64,6 @@ int main(int argc, char* argv[]) {
     mk_banded_k_mat(argv, l, K, N, dof, rows, bw);
     mk_F_mat(F, N, dof, q_x, q_y, F_centre, l);
     mk_M_mat(argv, M, N, l, dof);
-    // mk_M_mat(char* argv[], double* M, int N, double l, int dof)
-
 
     if (verbose == true){
         cout << "Matrix rows: " << rows << "\tMatrix cols: " << cols << endl;
@@ -74,6 +87,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (ex == 3){
+
         if (argc == 10){
             solve_implicit(argv, K, F, M, cols, bw, beta, gamma);
             print_pos_v(F, cols);
@@ -83,12 +97,16 @@ int main(int argc, char* argv[]) {
         }
     }
     if (ex == 4){
-        if (argc == 10){
-            solve_explicit_parallel(argc, argv, K, F, M, cols, bw);
-            print_pos_v(F, cols);
-        }
-        else {
+        if (argc != 10){
             cout << "Error, wrong number of args supplied for exercise 4" << endl;
+            exit (EXIT_FAILURE);
+        }
+        int begin = 0;
+        int end = 0;
+        get_solve_domain(cols, rank, cores, begin, end);
+        solve_explicit_parallel(argc, argv, K, F, M, cols, bw);
+        if (rank == 0){
+            // print_pos_v(F, cols);
         }
     }
 
@@ -96,5 +114,9 @@ int main(int argc, char* argv[]) {
     delete [] K;
     delete [] F;
     delete [] M;
+
+    if (ex > 3){
+        MPI_Finalize();
+    }
     return 0;
 }

@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
-#include <mpi.h>
 
 using namespace std;
 
@@ -9,8 +8,20 @@ using namespace std;
 #include "mat_builder.h"
 #include "lapack_c.h"
 
+void get_solve_domain(int eqs, int rank, int cores, int begin, int end){
+    int std_size = eqs / cores + 1;
+    // int plus_size = eqs / cores + 1;
+    int extra_cols = eqs % cores;
+    begin = rank * std_size - max((rank - extra_cols),0);
+    end = begin + std_size - 1;
+    if (rank >= extra_cols){
+        end--;
+    }
+    cout << "Core " << rank << ", solving " << end - begin + 1 << " equations, from " << begin << " to " << end << endl;
+}
 
 void solve_explicit_parallel(int argc, char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw){
+
     // Get from args the core variables and recalculate values
     double l = atof(argv[1]) * 0.001 / atoi(argv[2]);
     const double A = atof(argv[3]) * pow(10, -6);
@@ -20,13 +31,8 @@ void solve_explicit_parallel(int argc, char* argv[], double* K_ref, double* F_re
     double t_step = T / iters;
     const double rho = atof(argv[9]);
 
-    int retval;
-    retval = MPI_Init(&argc, &argv);
-    cout << "Hello world" << endl;
+    
 
-    // can i see the variables outside?
-
-    MPI_Finalize();
 
 
     // HERE THINGS CHANGE....

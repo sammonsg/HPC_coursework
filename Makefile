@@ -11,7 +11,7 @@ run1:
 	# Do things
 
 run2:
-	@./a.out 10000 24 12000 14400000 210000 2 1 100000 7850
+	@./a.out 10000 48 12000 14400000 210000 2 1 100000 7850
 	# Do things
 
 run3:
@@ -19,7 +19,7 @@ run3:
 	# Do things
 
 run4:
-	@mpiexec -np 4 ./a.out 10000 4 12000 14400000 210000 4 1 100000 7850
+	@mpiexec -np 4 ./a.out 10000 6 12000 14400000 210000 4 1 100g000 7850
 	# Do things
 
 run5:
@@ -35,4 +35,4 @@ task3: compile_mpi run3 clean
 task4: compile_mpi run4 clean
 task5: compile_mpi run5 clean
 
-all: compile run1 run2 run3 compile_mpi run4 run5
+all: compile_mpi run1 run2 run3 run4 run5
