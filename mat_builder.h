@@ -9,5 +9,6 @@ void mk_km_mat(double* KM, double* K_ref, double* M, int eqs, int bw);
 void mk_keff_mat(double* KM, double* K_ref, double* M, double b_dt2, int eqs, int bw);
 
 void mk_truncated_mat(double* K, double* K_ref, int rows, int begin, int end, int row_offset);
+void mk_truncated_v(double* K, double* K_ref, int begin, int end);
 
 void invert_v(double* out, double* in, int n);

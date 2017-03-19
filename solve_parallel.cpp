@@ -8,6 +8,8 @@ using namespace std;
 #include "mat_builder.h"
 #include "lapack_c.h"
 #include "solve.h"
+#include <mpi.h>
+
 
 void get_solve_domain(int eqs, int rank, int cores, int* begin, int* end){
     int std_size = eqs / cores + 1;
@@ -19,6 +21,30 @@ void get_solve_domain(int eqs, int rank, int cores, int* begin, int* end){
         *end =  *end -1;
     }
 }
+
+void exchange_boundaries(double* F, int solvespace, bool RHS_edge, bool LHS_edge, int rank, int iter){
+    if(!RHS_edge){
+        MPI_Send(F+(solvespace-8), 4, MPI_DOUBLE, rank + 1, iter, MPI_COMM_WORLD);
+        // cout << "Sent from " << rank << " to " << rank + 1 << endl;
+
+        MPI_Recv(F+(solvespace-4), 4, MPI_DOUBLE, rank + 1, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        // cout << "Received by " << rank << " from " << rank + 1 << endl;
+
+        // Receive RHS data from peer
+    }
+    if(!LHS_edge){
+        MPI_Send(F+4, 4, MPI_DOUBLE, rank - 1, iter, MPI_COMM_WORLD);
+        // cout << "Sent from " << rank << " to " << rank - 1 << endl;
+        MPI_Recv(F, 4, MPI_DOUBLE, rank - 1, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        // cout << "Received by " << rank << " from " << rank - 1 << endl;
+
+        // Send LHS data to peer
+        // Receive LHS data from peer
+    }
+    // MPI_Barrier(MPI_COMM_WORLD);
+}
+
+// void gather_solution(F_ref, u_pres, rank, cores)
 
 void solve_explicit_parallel(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw,
                             int rank, int cores){
@@ -48,16 +74,18 @@ void solve_explicit_parallel(char* argv[], double* K_ref, double* F_ref, double*
     int rhs_solvespace = min(end + 4 - 4 * RHS_edge, eqs-1);
     int solvespace = rhs_solvespace - lhs_solvespace + 1;
 
-    cout << rank << " has been allocated " << begin << " to " << end << endl;
-    cout << rank << " has influence across " << lhs_solvespace << " to " << rhs_solvespace << endl;
+    // cout << rank << " has been allocated " << begin << " to " << end << endl;
+    // cout << rank << " has influence across " << lhs_solvespace << " to " << rhs_solvespace << endl;
 
     // Allocate memory for rank's solve space
     double* rank_K = new double[solvespace * K_rows]();
     double* rank_F = new double[solvespace]();
     double* rank_M = new double[solvespace]();
     mk_truncated_mat(rank_K, K_ref, K_rows, lhs_solvespace, rhs_solvespace, 0);
-    mk_truncated_mat(rank_F, F_ref, 1, lhs_solvespace, rhs_solvespace, 0);
-    mk_truncated_mat(rank_M, M_ref, 1, lhs_solvespace, rhs_solvespace, 0);
+    mk_truncated_v(rank_F, F_ref, lhs_solvespace, rhs_solvespace);
+    mk_truncated_v(rank_M, M_ref, lhs_solvespace, rhs_solvespace);
+
+
 
     // F is the holder of the RHS terms as they are added and hold the u(t+1) solution at the end of each solve
     // iteration, but will then have its pointer overwritten to point at the to-be-discareded u(t-1)
@@ -70,25 +98,41 @@ void solve_explicit_parallel(char* argv[], double* K_ref, double* F_ref, double*
     const double t_fact =  rho * A * l / (t_step * t_step);
     double* M = new double[solvespace]();
     double* M_inv = new double[solvespace]();
-    F77NAME(dcopy) (solvespace, M_ref, 1, M, 1);
+    F77NAME(dcopy) (solvespace, rank_M, 1, M, 1);
     F77NAME(dscal) (solvespace, t_fact, M, 1);
     invert_v(M_inv, M, solvespace);
 
+    // if(rank == 2){
+    //     print_v(rank_F, solvespace);
+    // }
+
     // Create matrix (K - 2 * M) and remove the top rows of zeros that are unnecesarily present for this solve routine
     double* KM = new double[solvespace * rows]();
-    mk_km_mat(KM, K_ref, M, solvespace, bw);
+    mk_km_mat(KM, rank_K, M, solvespace, bw);
 
     for (int iter = 1; iter < iters + 1; iter++){
         // Get the simulation time, to scale the force accordingly
         double t = iter * t_step;
 
         // Run encapsulated solver. It was encapsulated for use by the parallel explicit solver.
-        solve_iter(u_past, u_pres, F, F_ref, KM, M, M_inv, t, rows, solvespace, bw);
+        solve_iter(u_past, u_pres, F, rank_F, KM, M, M_inv, t, rows, solvespace, bw);
+
+        // Broadcast solution to neighbors and receive updated values
+        // exchange_boundaries(F, solvespace, RHS_edge, LHS_edge, rank, iter);
 
         // Swap out pointer locations
         shift_vec(u_past, u_pres, F);
     }
-    print_v(u_pres, solvespace);
+
+    // Gather the solution on core 0
+    if (rank == 1){
+        // print_v(u_pres, solvespace);
+        // print_v(u_pres+solvespace-8, 4);
+
+    }
+    gather_solution(F_ref, u_pres, solvespace, rank, cores);
+
+    // print_v(u_pres+4, 4);
     delete [] rank_K;
     delete [] rank_F;
     delete [] rank_M;

@@ -141,6 +141,13 @@ void mk_truncated_mat(double* K, double* K_ref, int rows, int begin, int end, in
     }
 }
 
+void mk_truncated_v(double* K, double* K_ref, int begin, int end){
+    int len = end - begin + 1;
+    for (int r = 0; r < len; r++){
+        K[r] = K_ref[r + begin];
+    }
+}
+
 void invert_v(double* out, double* in, int n){
     for (int a = 0; a < n; a++){
         out[a] = 1.0 / in[a];
