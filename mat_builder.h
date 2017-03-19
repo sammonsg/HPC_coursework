@@ -7,3 +7,7 @@ void mk_F_ele(double* F, double q_x, double q_y, double l, int dof);
 
 void mk_km_mat(double* KM, double* K_ref, double* M, int eqs, int bw);
 void mk_keff_mat(double* KM, double* K_ref, double* M, double b_dt2, int eqs, int bw);
+
+void mk_truncated_mat(double* K, double* K_ref, int rows, int begin, int end, int row_offset);
+
+void invert_v(double* out, double* in, int n);

@@ -13,11 +13,31 @@ void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, 
 void a1_solve_routine(double* u0, double* u1, double* v0, double* a0, double b_dt, double b_dt2, double c_a0, int eqs);
 void v1_solve_routine(double* v0, double* a0, double* a1, double dt, double gmm, int eqs);
 
+
 void solve_static(double* K, double* F, int eqs, int bw){
     int info = 0;
     int* ipiv = new int[eqs]();
     int rows = 3 * bw + 1;
     F77NAME(dgbsv) (eqs, bw, bw, 1, K, rows, ipiv, F, eqs, &info);
+}
+
+void solve_iter(double* u_past, double* u_pres, double* F, double* F_ref, double* KM, double* M, double* M_inv,
+                double t, int rows, int eqs, int bw){
+
+    // Overwrite the previous iteration's t-1 positions with the F vector
+    F77NAME(dcopy) (eqs, F_ref, 1, F, 1);
+    // and scale it by the iteration's time, but do not increase past t = 1.0s
+    F77NAME(dscal) (eqs, min(t, 1.0), F, 1);
+
+    // Multiply the t+0 position by the KM matrix and add to the force vector
+    F77NAME(dgbmv)('t', eqs, eqs, bw, bw, -1, KM, rows, u_pres, 1, 1, F, 1);
+
+    // Multiply the t-1 position by M and add to the vector calculated above
+    F77NAME(dgbmv)('N', eqs, eqs, 0, 0, -1, M, 1, u_past, 1, 1, F, 1);
+
+    // F now holds the entire RHS and the equation can be solved as Ax = b. As A is a vector, b can be multiplied
+    // by M_inv and get the solution
+    multiply_vectors(F, M_inv, eqs);
 }
 
 void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw){
@@ -36,16 +56,14 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     double* u_past = new double[eqs]();
     double* u_pres = new double[eqs]();
 
-    // Memory allocation to default values needed by dgbsv
-    int* ipiv = new int[eqs]();
-    int info = 0;
-
     // The M_ref matrix is unmultiplied by its factor rho * A * l, so it is copied and multiplied at this stage.
     // It gets also multiplied by 1 / ∆t^2 as all elements in the equation present this factor
     const double t_fact =  rho * A * l / (t_step * t_step);
     double* M = new double[eqs]();
+    double* M_inv = new double[eqs]();
     F77NAME(dcopy) (eqs, M_ref, 1, M, 1);
     F77NAME(dscal) (eqs, t_fact, M, 1);
+    invert_v(M_inv, M, eqs);
 
     // Create matrix (K - 2 * M) and remove the top rows of zeros that are unnecesarily present for this solve routine
     double* KM = new double[eqs * rows]();
@@ -56,24 +74,8 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
         // t is necessary to calculate the iteration's force applied
         double t = iter * t_step;
 
-        // Overwrite the previous iteration's t-1 positions with the F vector
-        F77NAME(dcopy) (eqs, F_ref, 1, F, 1);
-        // and scale it by the iteration's time, but do not increase past t = 1.0s
-        F77NAME(dscal) (eqs, min(t,1.0), F, 1);
-
-        // Multiply the t+0 position by the KM matrix and add to the force vector
-        F77NAME(dgbmv)('t', eqs, eqs, bw, bw, -1, KM, rows, u_pres, 1, 1, F, 1);
-
-        // Multiply the t-1 position by M and add to the vector calculated above
-        F77NAME(dgbmv)('N', eqs, eqs, 0, 0, -1, M, 1, u_past, 1, 1, F, 1);
-
-
-        // F now holds the entire RHS and the equation can be solved as Ax = b
-        int info = 0;
-        F77NAME(dgbsv) (eqs, 0, 0, 1, M, 1, ipiv, F, eqs, &info);
-        if (info){
-            cout << "ERROR, dgbsv threw an exception: " << info << endl;
-        }
+        // Run encapsulated solver. It was encapsulated for use by the parallel explicit solver.
+        solve_iter(u_past, u_pres, F, F_ref, KM, M, M_inv, t, rows, eqs, bw);
 
         // Instead of reallocating memory or inserting values in each vector, swap the pointers
         // to the arrays (which are of same size)

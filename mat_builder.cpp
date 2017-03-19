@@ -101,9 +101,10 @@ void mk_F_mat(double* F, int N, int dof, double q_x, double q_y, int F_centre, d
 
 void mk_M_mat(char* argv[], double* M, int N, double l, int dof){
     for (int n = 0; n < N; n++){
-        M[0 + n * dof] = 0.5;
-        M[1 + n * dof] = 0.5;
-        M[2 + n * dof] = l * l / 24.0;
+        // Inertia terms are doubled due to overlay
+        M[0 + n * dof] = 1;
+        M[1 + n * dof] = 1;
+        M[2 + n * dof] = l * l / 12.0;
     }
 }
 
@@ -129,16 +130,19 @@ void mk_keff_mat(double* Keff, double* K_ref, double* M, double b_dt2, int eqs, 
     }
 }
 
-// void mk_truncated_K(char* argv[], double l, double* K, int dof, int rows, int bw, int begin, int end){
-//     int cols = end - begin + 1;
-//     int K_ele_len = rows * dof;
-//     double * K_ele = new double[K_ele_len]();
-//     offset = begin % 3;
-//     for (c = 0; c < cols; c++){
-//         int ref_column = (c+offset) % 3;
-//         for (r = 0; r < rows; r++){
-//             K[r + c * rows] = K_ele[r + ref_column * rows];
-//         }
-//     }
-//     delete [] K_ele;
-// }
+
+void mk_truncated_mat(double* K, double* K_ref, int rows, int begin, int end, int row_offset){
+    int ref_rows = rows + row_offset;
+
+    for (int c = begin; c < end + 1; c++){
+        for (int r = 0; r < rows; r++){
+            K[r + (c-begin) * rows] = K_ref[r + row_offset + c * ref_rows];
+        }
+    }
+}
+
+void invert_v(double* out, double* in, int n){
+    for (int a = 0; a < n; a++){
+        out[a] = 1.0 / in[a];
+    }
+}

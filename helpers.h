@@ -9,3 +9,4 @@ void shift_vec(double*& pres, double*& futu);
 void shift_vec(double*& past, double*& pres, double*& futu);
 
 void m_diag_add(double* L, double* R, double r_fact, int l, int bw);
+void multiply_vectors(double* lhs, double* rhs, int eqs);

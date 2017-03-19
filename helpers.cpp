@@ -71,3 +71,9 @@ void m_diag_add(double* L, double* R, double r_fact, int l, int bw){
         L[a * rows + 2 * bw] += R[a] * r_fact;
     }
 }
+
+void multiply_vectors(double* lhs, double* rhs, int eqs){
+    for (int a = 0; a < eqs; a++){
+        lhs[a] = lhs[a] * rhs[a];
+    }
+}

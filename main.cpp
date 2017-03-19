@@ -101,22 +101,22 @@ int main(int argc, char* argv[]) {
             cout << "Error, wrong number of args supplied for exercise 4" << endl;
             exit (EXIT_FAILURE);
         }
-        int begin = 0;
-        int end = 0;
-        get_solve_domain(cols, rank, cores, begin, end);
-        solve_explicit_parallel(argc, argv, K, F, M, cols, bw);
+        solve_explicit_parallel(argv, K, F, M, cols, bw, rank, cores);
         if (rank == 0){
             // print_pos_v(F, cols);
         }
     }
 
 
+
     delete [] K;
     delete [] F;
     delete [] M;
-
+    
     if (ex > 3){
         MPI_Finalize();
     }
+
+
     return 0;
 }
