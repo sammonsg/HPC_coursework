@@ -13,14 +13,12 @@ using namespace std;
 
 void get_solve_domain(int eqs, int rank, int cores, int* begin, int* end){
     int std_size = eqs / cores + 1;
-    // int plus_size = eqs / cores + 1;
     int extra_cols = eqs % cores;
     *begin = rank * std_size - max((rank - extra_cols),0);
     *end = *begin + std_size - 1;
     if (rank >= extra_cols){
         *end =  *end -1;
     }
-    // cout << "Core " << rank << " has been assigned " << *begin << " to " << *end << endl;
 }
 
 void exchange_boundaries(double* F, int solvespace, bool RHS_edge, bool LHS_edge, int rank, int iter){
@@ -135,15 +133,50 @@ void solve_explicit_parallel(char* argv[], double* K_ref, double* F_ref, double*
     // Gather the solution on core 0
     gather_solution(F_ref, eqs, u_pres, rank, cores, solvespace);
 
-    if (rank == 0){
-        // print_v(u_pres, solvespace);
-        // print_v(u_pres+solvespace-8, 4);
-        print_pos_v(F_ref, eqs);
-
-    }
-
     // print_v(u_pres+4, 4);
     delete [] rank_K;
     delete [] rank_F;
     delete [] rank_M;
+}
+
+void solve_implicit_parallel(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw,
+                            double beta, double gamma, int rank, int cores){
+
+    // Get from args the core variables and recalculate values
+    double l = atof(argv[1]) * 0.001 / atoi(argv[2]);
+    const double A = atof(argv[3]) * pow(10, -6);
+    const int rows = 2 * bw + 1;
+    const int K_rows = rows + bw;
+    const double T = atof(argv[7]);
+    int iters = atof(argv[8]);
+    double t_step = T / iters;
+    const double rho = atof(argv[9]);
+    int solvespace = (eqs) / cores;
+
+    // Adjust size if domain is not divisible equally amongst cores
+    if (eqs % cores) { solvespace++; }
+    const int lhs_pt = rank * solvespace;
+    const int rhs_pt = (rank + 1) * solvespace - 1;
+    cout << "Core " << rank << " has been allocated " << lhs_pt << " to ";
+    cout << rhs_pt << " for a total of " << solvespace << " in domain of size " << eqs << endl;
+
+    // Make local elements from full matrices
+    double* rank_K = new double[solvespace * K_rows]();
+    double* rank_F = new double[solvespace]();
+    double* rank_M = new double[solvespace]();
+
+    mk_truncated_mat(rank_K, K_ref, K_rows, lhs_pt, min(rhs_pt,eqs-1), 0);
+    mk_truncated_v(rank_F, F_ref, lhs_pt, min(rhs_pt,eqs-1));
+    mk_truncated_v(rank_M, M_ref, lhs_pt, min(rhs_pt,eqs-1));
+
+    if(rank == cores - 1){
+        print_banded_m(rank_K, rows+4, solvespace);
+        int extra_cols = eqs % cores;
+        for (int c = solvespace - extra_cols; c < solvespace; c++){
+            cout << " EDIT " << c << endl;
+            cout << " extras  " << extra_cols << endl;
+
+        }
+    }
+
 }

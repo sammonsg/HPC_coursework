@@ -103,6 +103,16 @@ int main(int argc, char* argv[]) {
         }
         solve_explicit_parallel(argv, K, F, M, cols, bw, rank, cores);
         if (rank == 0){
+            print_pos_v(F, cols);
+        }
+    }
+    if (ex == 5){
+        if (argc != 10){
+            cout << "Error, wrong number of args supplied for exercise 4" << endl;
+            exit (EXIT_FAILURE);
+        }
+        solve_implicit_parallel(argv, K, F, M, cols, bw, beta, gamma, rank, cores);
+        if (rank == 0){
             // print_pos_v(F, cols);
         }
     }
@@ -112,7 +122,7 @@ int main(int argc, char* argv[]) {
     delete [] K;
     delete [] F;
     delete [] M;
-    
+
     if (ex > 3){
         MPI_Finalize();
     }
