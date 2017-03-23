@@ -20,31 +20,39 @@ void get_solve_domain(int eqs, int rank, int cores, int* begin, int* end){
     if (rank >= extra_cols){
         *end =  *end -1;
     }
+    // cout << "Core " << rank << " has been assigned " << *begin << " to " << *end << endl;
 }
 
 void exchange_boundaries(double* F, int solvespace, bool RHS_edge, bool LHS_edge, int rank, int iter){
     if(!RHS_edge){
         MPI_Send(F+(solvespace-8), 4, MPI_DOUBLE, rank + 1, iter, MPI_COMM_WORLD);
-        // cout << "Sent from " << rank << " to " << rank + 1 << endl;
-
         MPI_Recv(F+(solvespace-4), 4, MPI_DOUBLE, rank + 1, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        // cout << "Received by " << rank << " from " << rank + 1 << endl;
-
-        // Receive RHS data from peer
     }
     if(!LHS_edge){
         MPI_Send(F+4, 4, MPI_DOUBLE, rank - 1, iter, MPI_COMM_WORLD);
-        // cout << "Sent from " << rank << " to " << rank - 1 << endl;
         MPI_Recv(F, 4, MPI_DOUBLE, rank - 1, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        // cout << "Received by " << rank << " from " << rank - 1 << endl;
-
-        // Send LHS data to peer
-        // Receive LHS data from peer
     }
-    // MPI_Barrier(MPI_COMM_WORLD);
 }
 
-// void gather_solution(F_ref, u_pres, rank, cores)
+void gather_solution(double* F_ref, int eqs, double* u_pres, int rank, int cores, int solvespace){
+    if(rank == 0){
+        F77NAME(dcopy) (solvespace-4, u_pres, 1, F_ref, 1);
+        for (int core = 1; core < cores; core++){
+            int begin = 0;
+            int end = 0;
+            get_solve_domain(eqs, core, cores, &begin, &end);
+            int len = end - begin + 1;
+            MPI_Recv(F_ref + begin, len, MPI_DOUBLE, core, core, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
+        //Receive data from all cores
+    }
+    if(rank == cores - 1){
+        MPI_Send(u_pres+4, solvespace - 4, MPI_DOUBLE, 0, rank, MPI_COMM_WORLD);
+    }
+    else{
+        MPI_Send(u_pres+4, solvespace - 8, MPI_DOUBLE, 0, rank, MPI_COMM_WORLD);
+    }
+}
 
 void solve_explicit_parallel(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw,
                             int rank, int cores){
@@ -118,19 +126,21 @@ void solve_explicit_parallel(char* argv[], double* K_ref, double* F_ref, double*
         solve_iter(u_past, u_pres, F, rank_F, KM, M, M_inv, t, rows, solvespace, bw);
 
         // Broadcast solution to neighbors and receive updated values
-        // exchange_boundaries(F, solvespace, RHS_edge, LHS_edge, rank, iter);
+        exchange_boundaries(F, solvespace, RHS_edge, LHS_edge, rank, iter);
 
         // Swap out pointer locations
         shift_vec(u_past, u_pres, F);
     }
 
     // Gather the solution on core 0
-    if (rank == 1){
+    gather_solution(F_ref, eqs, u_pres, rank, cores, solvespace);
+
+    if (rank == 0){
         // print_v(u_pres, solvespace);
         // print_v(u_pres+solvespace-8, 4);
+        print_pos_v(F_ref, eqs);
 
     }
-    gather_solution(F_ref, u_pres, solvespace, rank, cores);
 
     // print_v(u_pres+4, 4);
     delete [] rank_K;
