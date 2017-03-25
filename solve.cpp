@@ -166,24 +166,15 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
 
 void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double* tmp,
                       double b_dt, double b_dt2, double c_a0, int eqs, int K_rows, int* ipiv, int info){
-    // Copy a0 scaled by (1/2β)-1 into tmp
-    F77NAME(dcopy) (eqs, a0, 1, tmp, 1);
-    F77NAME(dscal) (eqs, c_a0, tmp, 1);
 
-    // Add the v0 term to tmp, v0 scaled by 1/(β * dt)
-    F77NAME(daxpy) (eqs, b_dt, v0, 1, tmp, 1);
-
-    // Add the u0 term to tmp, u0 scaled by 1/(β * dt * dt)
-    F77NAME(daxpy) (eqs, b_dt2, u0, 1, tmp, 1);
-
-    // Get F as result to Ax + y, then dump tmp
-    F77NAME(dgbmv) ('n', eqs, eqs, 0, 0, 1, M, 1, tmp, 1, 1, F, 1);
+    for (int eq = 0; eq < eqs; eq++){
+        F[eq] += M[eq] * (u0[eq] * b_dt2 + v0[eq] * b_dt + a0[eq] * c_a0);
+    }
+    
     F77NAME(dcopy) (eqs * K_rows, Keff, 1, tmp, 1);
 
     // Solve the system into F
     F77NAME(dgbsv) (eqs, 4, 4, 1, tmp, K_rows, ipiv, F, eqs, &info);
-    // delete [] tmp;
-
     if (info){
         cout << "An error occurred in dgbsv during solve of u1" << endl;
     }
