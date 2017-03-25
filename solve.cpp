@@ -96,7 +96,7 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     int iters = atof(argv[8]);
     double dt = T / iters;
     const double rho = atof(argv[9]);
-    const double M_fact =  rho * A * l;
+    const double M_fact = rho * A * l;
     // Copy and scale M_ref by rho * A * l
     double* M = new double[eqs]();
     F77NAME(daxpy) (eqs, M_fact, M_ref, 1, M, 1);
@@ -175,12 +175,10 @@ void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, 
     // Add the u0 term to tmp, u0 scaled by 1/(β * dt * dt)
     F77NAME(daxpy) (eqs, b_dt2, u0, 1, tmp, 1);
 
-
     // Get F as result to Ax + y, then dump tmp
     F77NAME(dgbmv) ('n', eqs, eqs, 0, 0, 1, M, 1, tmp, 1, 1, F, 1);
-
-
     F77NAME(dcopy) (eqs * K_rows, Keff, 1, tmp, 1);
+    
     // Solve the system into F
     F77NAME(dgbsv) (eqs, 4, 4, 1, tmp, K_rows, ipiv, F, eqs, &info);
     delete [] tmp;

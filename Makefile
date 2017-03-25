@@ -23,7 +23,7 @@ run4:
 	# Do things
 
 run5:
-	@mpiexec -np 4 ./a.out 10000 8 12000 14400000 210000 5 1 20000 7850
+	@mpiexec -np 2 ./a.out 10000 6 12000 14400000 210000 5 1 20000 7850
 	# Do things
 
 clean:

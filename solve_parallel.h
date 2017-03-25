@@ -3,4 +3,4 @@ void solve_explicit_parallel(char* argv[], double* K_ref, double* F_ref, double*
                             int rank, int cores);
 
 void solve_implicit_parallel(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw,
-                            double beta, double gamma, int rank, int cores);
+                            double bt, double gmm, int rank, int cores);

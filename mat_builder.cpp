@@ -122,11 +122,11 @@ void mk_km_mat(double* KM, double* K_ref, double* M, int eqs, int bw){
     delete [] KM_full;
 }
 
-void mk_keff_mat(double* Keff, double* K_ref, double* M, double b_dt2, int eqs, int bw){
-    int rows = 3 * bw + 1;
+void mk_keff_mat(double* Keff, double* K_ref, double* M, double b_dt2, int eqs, int bw, int offset = 0){
+    int rows = 3 * bw + 1 + offset;
     F77NAME(dcopy) (rows * eqs, K_ref, 1, Keff, 1);
     for (int c = 0; c < eqs; c++){
-        Keff[2 * bw + c * rows] += M[c] * b_dt2;
+        Keff[2 * bw + offset + c * rows] += M[c] * b_dt2;
     }
 }
 
@@ -135,8 +135,8 @@ void mk_truncated_mat(double* K, double* K_ref, int rows, int begin, int end, in
     int ref_rows = rows + row_offset;
 
     for (int c = begin; c < end + 1; c++){
-        for (int r = 0; r < rows; r++){
-            K[r + (c-begin) * rows] = K_ref[r + row_offset + c * ref_rows];
+        for (int r = 0; r <  rows - max(-row_offset,0); r++){
+            K[r + max(-row_offset,0) + (c-begin) * rows] = K_ref[r + max(row_offset,0) + c * ref_rows];
         }
     }
 }
