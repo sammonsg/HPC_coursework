@@ -8,7 +8,7 @@ using namespace std;
 #include "mat_builder.h"
 #include "lapack_c.h"
 
-void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double b_dt,
+void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double* tmp, double b_dt,
                       double b_dt2, double c_a0, int eqs, int K_rows, int* ipiv, int info);
 void a1_solve_routine(double* u0, double* u1, double* v0, double* a0, double b_dt, double b_dt2, double c_a0, int eqs);
 void v1_solve_routine(double* v0, double* a0, double* a1, double dt, double gmm, int eqs);
@@ -126,6 +126,7 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     double* a1 = new double[eqs]();
 
     double* temp = new double[eqs]();
+    double* temp2 = new double[eqs * K_rows]();
     int* ipiv = new int[eqs]();
     int info = 0;
 
@@ -138,7 +139,7 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
         F77NAME(dscal) (eqs, min(t+dt,1.00), temp, 1);
 
         // Calculate u(t+1) into temp and copy into u1
-        u1_solve_routine(u0, v0, a0, temp, M, Keff, b_dt, b_dt2, c_a0, eqs, K_rows, ipiv, info);
+        u1_solve_routine(u0, v0, a0, temp, M, Keff, temp2, b_dt, b_dt2, c_a0, eqs, K_rows, ipiv, info);
 
         F77NAME(dcopy) (eqs, temp, 1, u1, 1);
 
@@ -163,11 +164,11 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     F77NAME(dcopy) (eqs, u0, 1, F_ref, 1);
 }
 
-void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double b_dt,
-                      double b_dt2, double c_a0, int eqs, int K_rows, int* ipiv, int info){
-    // Create new vector, copy a0 scaled by (1/2β)-1
-    double* tmp = new double[eqs * K_rows]();
-    F77NAME(daxpy) (eqs, c_a0, a0, 1, tmp, 1);
+void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double* tmp,
+                      double b_dt, double b_dt2, double c_a0, int eqs, int K_rows, int* ipiv, int info){
+    // Copy a0 scaled by (1/2β)-1 into tmp
+    F77NAME(dcopy) (eqs, a0, 1, tmp, 1);
+    F77NAME(dscal) (eqs, c_a0, tmp, 1);
 
     // Add the v0 term to tmp, v0 scaled by 1/(β * dt)
     F77NAME(daxpy) (eqs, b_dt, v0, 1, tmp, 1);
@@ -178,10 +179,10 @@ void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, 
     // Get F as result to Ax + y, then dump tmp
     F77NAME(dgbmv) ('n', eqs, eqs, 0, 0, 1, M, 1, tmp, 1, 1, F, 1);
     F77NAME(dcopy) (eqs * K_rows, Keff, 1, tmp, 1);
-    
+
     // Solve the system into F
     F77NAME(dgbsv) (eqs, 4, 4, 1, tmp, K_rows, ipiv, F, eqs, &info);
-    delete [] tmp;
+    // delete [] tmp;
 
     if (info){
         cout << "An error occurred in dgbsv during solve of u1" << endl;

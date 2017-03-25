@@ -3,8 +3,9 @@ compile:
 	-L/usr/local/lib -llapack -lblas
 
 compile_mpi:
-	@mpicxx -std=c++11 main.cpp mat_builder.cpp helpers.cpp solve.cpp solve_parallel.cpp \
-	-L/usr/local/lib -llapack -lblas
+	@mpicxx -std=c++11 main.cpp mat_builder.cpp helpers.cpp solve.cpp \
+	solve_parallel.cpp -L/usr/local/lib -llapack -lblas -lscalapack-openmpi \
+	-lblacs-openmpi -lblacsCinit-openmpi
 
 run1:
 	@./a.out 10000 24 12000 14400000 210000 1
@@ -15,7 +16,7 @@ run2:
 	# Do things
 
 run3:
-	@./a.out 10000 24 12000 14400000 210000 3 1 20000 7850
+	@./a.out 10000 48 12000 14400000 210000 3 1 200000 7850
 	# Do things
 
 run4:
