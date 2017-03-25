@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
         }
         solve_implicit_parallel(argv, K, F, M, cols, bw, beta, gamma, rank, cores);
         if (rank == 0){
-            // print_pos_v(F, cols);
+            print_pos_v(F, cols);
         }
     }
 

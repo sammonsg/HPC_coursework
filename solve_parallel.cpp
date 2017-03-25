@@ -10,9 +10,10 @@ using namespace std;
 #include "solve.h"
 #include <mpi.h>
 
-void u1_solve_parallel(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double b_dt,
-                       double b_dt2, double c_a0, int eqs, int K_rows, int* ipiv, int info);
-void fill_descriptors(int n, int nb, int bw, int ctx, int* desca, int* descb);
+void u1_solve_parallel(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double* tmp, double* wk,
+                       double lwork, double b_dt, double b_dt2, double c_a0, int solvespace, int eqs, int K_rows,
+                       int bw, int* desca, int* descb, int rank, int* ipiv, int info);
+void initialize_cblacs(int n, int nb, int bw, int ctx, int* desca, int* descb);
 
 void get_solve_domain(int eqs, int rank, int cores, int* begin, int* end){
     int std_size = eqs / cores + 1;
@@ -35,25 +36,43 @@ void exchange_boundaries(double* F, int solvespace, bool RHS_edge, bool LHS_edge
     }
 }
 
-void gather_solution(double* F_ref, int eqs, double* u_pres, int rank, int cores, int solvespace){
+void gather_solution(double* F_ref, int eqs, double* u_pres, int rank, int cores, int solvespace, int bw, int blankCols = 0){
     if(rank == 0){
-        F77NAME(dcopy) (solvespace-4, u_pres, 1, F_ref, 1);
+        F77NAME(dcopy) (solvespace-bw, u_pres, 1, F_ref, 1);
         for (int core = 1; core < cores; core++){
-            int begin = 0;
-            int end = 0;
-            get_solve_domain(eqs, core, cores, &begin, &end);
+            int begin;
+            int end;
+            if (blankCols == 0){
+                get_solve_domain(eqs, core, cores, &begin, &end);
+            }
+            else{
+                int true_solvespace = eqs / cores;
+                if (eqs % cores) { true_solvespace++; }
+                begin = core * true_solvespace;
+                end = (core + 1) * true_solvespace - 1;
+            }
+
+            // Correction for last element
             int len = end - begin + 1;
+            if (core == cores - 1 && blankCols){
+                len -= blankCols;
+            }
+            // Correction for last element for
             MPI_Recv(F_ref + begin, len, MPI_DOUBLE, core, core, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
         //Receive data from all cores
     }
-    if(rank == cores - 1){
-        MPI_Send(u_pres+4, solvespace - 4, MPI_DOUBLE, 0, rank, MPI_COMM_WORLD);
+    else if(rank == cores - 1){
+        MPI_Send(u_pres+bw, solvespace - bw - blankCols, MPI_DOUBLE, 0, rank, MPI_COMM_WORLD);
     }
     else{
-        MPI_Send(u_pres+4, solvespace - 8, MPI_DOUBLE, 0, rank, MPI_COMM_WORLD);
+        MPI_Send(u_pres+bw, solvespace - 2*bw, MPI_DOUBLE, 0, rank, MPI_COMM_WORLD);
     }
+    MPI_Barrier(MPI_COMM_WORLD);
 }
+
+// gather_implicit_solution(F_ref, eqs, u0, rank, cores, solvespace){
+//}
 
 void solve_explicit_parallel(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw,
                             int rank, int cores){
@@ -111,9 +130,7 @@ void solve_explicit_parallel(char* argv[], double* K_ref, double* F_ref, double*
     F77NAME(dscal) (solvespace, t_fact, M, 1);
     invert_v(M_inv, M, solvespace);
 
-    // if(rank == 2){
-    //     print_v(rank_F, solvespace);
-    // }
+
 
     // Create matrix (K - 2 * M) and remove the top rows of zeros that are unnecesarily present for this solve routine
     double* KM = new double[solvespace * rows]();
@@ -134,9 +151,8 @@ void solve_explicit_parallel(char* argv[], double* K_ref, double* F_ref, double*
     }
 
     // Gather the solution on core 0
-    gather_solution(F_ref, eqs, u_pres, rank, cores, solvespace);
+    gather_solution(F_ref, eqs, u_pres, rank, cores, solvespace, bw);
 
-    // print_v(u_pres+4, 4);
     delete [] rank_K;
     delete [] rank_F;
     delete [] rank_M;
@@ -154,14 +170,12 @@ void solve_implicit_parallel(char* argv[], double* K_ref, double* F_ref, double*
     int iters = atof(argv[8]);
     double dt = T / iters;
     const double rho = atof(argv[9]);
-    int solvespace = (eqs) / cores;
+    int solvespace = eqs / cores;
 
     // Adjust size if domain is not divisible equally amongst cores
     if (eqs % cores) { solvespace++; }
     const int lhs_pt = rank * solvespace;
     const int rhs_pt = (rank + 1) * solvespace - 1;
-    cout << "Core " << rank << " has been allocated " << lhs_pt << " to ";
-    cout << rhs_pt << " for a total of " << solvespace << " in domain of size " << eqs << endl;
     int extra_cols = solvespace * cores - eqs;
 
     // Calculate common coefficients
@@ -204,20 +218,61 @@ void solve_implicit_parallel(char* argv[], double* K_ref, double* F_ref, double*
     double* a0 = new double[eqs]();
     double* a1 = new double[eqs]();
 
+    // Carrier variable for use in solver
     double* temp = new double[eqs]();
+    double* temp2 = new double[eqs*rows]();
+
+    // Initialize Cblacs
+
+    // Initialize scaLAPACK elements
+    // Code snippet from pbsv.cpp as per Lecture 10 of HPC course at Imperial College of London
+    int nrow = 1;
+    int ncol = cores;
+    char order = 'C';
+    int ctx;
+    int mype;
+    int npe;
+    int myrow;
+    int mycol;
+    Cblacs_pinfo(&mype, &npe);
+    Cblacs_get( 0, 0, &ctx );
+    Cblacs_gridinit( &ctx, &order, 1, npe );
+    Cblacs_gridinfo( ctx, &nrow, &ncol, &myrow, &mycol);
+
+    // Create descriptors for matrix and RHS vector storage
+    int desca[7];
+    desca[0] = 501;         // Type is a banded matrix 1-by-P
+    desca[1] = ctx;         // Context
+    desca[2] = eqs;           // Problem size
+    desca[3] = solvespace;          // Blocking
+    desca[4] = 0;           // Process row/column
+    desca[5] = rows;         // Local size
+    desca[6] = 0;           // Reserved
+
+    int descb[7];
+    descb[0] = 502;         // Type is a banded matrix P-by-1 (RHS)
+    descb[1] = ctx;         // Context
+    descb[2] = eqs;           // Problem size
+    descb[3] = solvespace;          // Blocking
+    descb[4] = 0;           // Process row/column
+    descb[5] = solvespace;          // Local size
+    descb[6] = 0;           // Reserved
+
+    const int lwork = 2*(solvespace+bw)*(2*bw)+(12*bw)*(3*bw) + max(1*(solvespace+6*bw), 1);
     int* ipiv = new int[eqs]();
+    double* wk = new double[lwork];
     int info = 0;
 
-    for (int iter = 0; iter < iters + 1; iter++){
+    for (int iter = 1; iter < iters + 1; ++iter){
         double t = iter * dt;
-
-
-        F77NAME(dcopy) (solvespace, F_ref, 1, temp, 1);
+        // cout << "t = " << t << endl;
+        F77NAME(dcopy) (solvespace, rank_F, 1, temp, 1);
         // Scale by the time. Use min(t, 1) to get the effect of linearly increasing load until t=1 and then hold force
         F77NAME(dscal) (solvespace, min(t+dt,1.00), temp, 1);
 
         // Calculate u(t+1) into temp and copy into u1
-        u1_solve_parallel(u0, v0, a0, temp, rank_M, Keff, b_dt, b_dt2, c_a0, solvespace, K_rows, ipiv, info);
+        u1_solve_parallel(u0, v0, a0, temp, rank_M, Keff, temp2, wk, lwork, b_dt, b_dt2, c_a0, solvespace, eqs, rows,
+                          bw, desca, descb, rank, ipiv, info);
 
         F77NAME(dcopy) (solvespace, temp, 1, u1, 1);
 
@@ -239,51 +294,27 @@ void solve_implicit_parallel(char* argv[], double* K_ref, double* F_ref, double*
             break;
         }
     }
-    // F77NAME(dcopy) (solvespace, u0, 1, F_ref, 1);
+    // Gather solution onto rank0's F_ref variable
+    gather_solution(F_ref, eqs, u0, rank, cores, solvespace, 0, extra_cols);
 
+    Cblacs_gridexit( ctx );
 }
 
-void u1_solve_parallel(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double b_dt,
-                       double b_dt2, double c_a0, int eqs, int K_rows, int* ipiv, int info){
+void u1_solve_parallel(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double* tmp, double* wk,
+                       double lwork, double b_dt, double b_dt2, double c_a0, int solvespace, int eqs, int rows,
+                       int bw, int* desca, int* descb, int rank, int* ipiv, int info){
 
-    // Create new vector, copy a0 scaled by (1/2β)-1
-    double* tmp = new double[eqs * K_rows]();
-    F77NAME(daxpy) (eqs, c_a0, a0, 1, tmp, 1);
+    for (int eq = 0; eq < solvespace; eq++){
+        F[eq] += M[eq] * (u0[eq] * b_dt2 + v0[eq] * b_dt + a0[eq] * c_a0);
+    }
 
-    // Add the v0 term to tmp, v0 scaled by 1/(β * dt)
-    F77NAME(daxpy) (eqs, b_dt, v0, 1, tmp, 1);
+    // Create disposable copy of Keff
+    F77NAME(dcopy) (solvespace * rows, Keff, 1, tmp, 1);
 
-    // Add the u0 term to tmp, u0 scaled by 1/(β * dt * dt)
-    F77NAME(daxpy) (eqs, b_dt2, u0, 1, tmp, 1);
-
-    // Get F as result to Ax + y, then dump tmp
-    F77NAME(dgbmv) ('n', eqs, eqs, 0, 0, 1, M, 1, tmp, 1, 1, F, 1);
-
-    F77NAME(dcopy) (eqs * K_rows, Keff, 1, tmp, 1);
     // Solve the system into F
-    // F77NAME(pdgbsv) (eqs, 4, 4, 1, tmp, 1, desca, ipiv, F, eqs, &info);
-    delete [] tmp;
+    F77NAME(pdgbsv) (eqs, bw, bw, 1, tmp, 1, desca, ipiv, F, 1, descb, wk, lwork, &info);
 
     if (info){
         cout << "An error occurred in pdgbsv during PDGBSV: " << info << endl;
     }
-}
-
-void fill_descriptors(int n, int nb, int rows, int ctx, int* desca, int* descb){
-    // Create descriptors for matrix and RHS vector storage
-    desca[0] = 501;         // Type is a banded matrix 1-by-P
-    desca[1] = ctx;         // Context
-    desca[2] = n;           // Problem size
-    desca[3] = nb;          // Blocking
-    desca[4] = 0;           // Process row/column
-    desca[5] = rows;         // Local size
-    desca[6] = 0;           // Reserved
-
-    descb[0] = 502;         // Type is a banded matrix P-by-1 (RHS)
-    descb[1] = ctx;         // Context
-    descb[2] = n;           // Problem size
-    descb[3] = nb;          // Blocking
-    descb[4] = 0;           // Process row/column
-    descb[5] = nb;          // Local size
-    descb[6] = 0;           // Reserved
 }
