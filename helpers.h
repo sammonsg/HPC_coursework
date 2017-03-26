@@ -4,7 +4,6 @@ void print_banded_m(double* M, int rows, int cols);
 void print_v(double* M, int rows);
 void print_pos_v(double* M, int cols);
 
-void clone_vector(double* master, double* target, int length);
 void shift_vec(double*& pres, double*& futu);
 void shift_vec(double*& past, double*& pres, double*& futu);
 

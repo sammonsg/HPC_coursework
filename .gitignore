@@ -2,4 +2,6 @@
 /.idea
 /a.out
 /*.ghc
-cw_py
+/cw_py
+/output/data/*
+/output/plots/*

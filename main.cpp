@@ -9,14 +9,16 @@ using namespace std;
 #include "solve.h"
 #include "solve_parallel.h"
 #include <mpi.h>
+#include "io.h"
 
 
 int main(int argc, char* argv[]) {
-    int ex = atoi(argv[6]);
+
 
     int retval;
     int rank = 0;
-    int cores;
+    int cores = 1;
+    int ex = atoi(argv[6]);
 
     if (ex > 3){
         retval = MPI_Init(&argc, &argv);
@@ -27,10 +29,11 @@ int main(int argc, char* argv[]) {
     if (rank == 0){
     // Get exercise number
         cout << "Exercise " << ex << endl;
+        printHeader();
     }
 
     // Set output verbosity
-    bool verbose = 0;
+    bool show_matrices = 0;
 
     // Units are converted from those supplied to SI units
     double L = atof(argv[1]) * 0.001;
@@ -46,6 +49,8 @@ int main(int argc, char* argv[]) {
     const int F_centre = 1000;
     const double beta = 0.25;
     const double gamma = 0.5;
+
+    printInfo(n, cols, rank, cores);
 
     if(n % 2 != 0){
       cout << "The number of elements must be even to ensure a node is present"
@@ -65,7 +70,10 @@ int main(int argc, char* argv[]) {
     mk_F_mat(F, N, dof, q_x, q_y, F_centre, l);
     mk_M_mat(argv, M, N, l, dof);
 
-    if (verbose == true){
+    // Flag for showing solution on terminal
+    bool print_solution = true;
+
+    if (show_matrices == true){
         cout << "Matrix rows: " << rows << "\tMatrix cols: " << cols << endl;
         print_banded_m(K, rows, dof*N);
         print_v(F, cols);
@@ -73,13 +81,34 @@ int main(int argc, char* argv[]) {
     }
     if (ex == 1){
         solve_static(K, F, cols, bw);
-        print_pos_v(F, cols);
-
+        if (print_solution) {
+            print_pos_v(F, cols);
+        }
     }
     if (ex == 2){
         if (argc == 10){
+
+            // Turn this flag to True to get the load_rate study
+            bool load_rate_study = false;
+
+            if (load_rate_study) {
+                int iters = atoi(argv[8]);
+                int runs = iters/50 + 1;
+                double* minmax = new double[iters]();
+                for (int i = 0; i < runs - 1; i++){
+                    double T_load = (double)i*50 / ((double)iters / 5.0);
+                    // cout << i << "\t" << T_load << endl;
+                    minmax[i*3] = i;
+                    minmax[i*3+1] = T_load;
+                    minmax[i*3+2] = solve_explicit(argv, K, F, M, cols, bw, T_load);
+                    cout << "Iter: " << i << "\tT_load: " << T_load << "\tOscillations: " << minmax[3*i+2] << endl;
+                }
+                write_v("minmax_exp", minmax, runs, 3, false);
+            }
             solve_explicit(argv, K, F, M, cols, bw);
-            print_pos_v(F, cols);
+            if (print_solution) {
+                print_pos_v(F, cols);
+            }
         }
         else {
             cout << "Error, wrong number of args supplied for exercise 2" << endl;
@@ -89,8 +118,29 @@ int main(int argc, char* argv[]) {
     if (ex == 3){
 
         if (argc == 10){
+            bool load_rate_study = false;
+
+            // Logic block for load rates
+            if (load_rate_study) {
+                int iters = atoi(argv[8]);
+                int runs = iters/10 + 1;
+                double* minmax = new double[iters]();
+                for (int i = 0; i < runs - 1; i++){
+                    double T_load = (double)i*10 / ((double)iters / 5.0);
+                    // cout << i << "\t" << T_load << endl;
+                    minmax[i*3] = i;
+                    minmax[i*3+1] = T_load;
+                    minmax[i*3+2] = solve_implicit(argv, K, F, M, cols, bw, beta, gamma, T_load);
+                    cout << "Iter: " << i << "\tT_load: " << T_load << "\tOscillations: " << minmax[3*i+2] << endl;
+                }
+                write_v("minmax_imp", minmax, runs, 3, false);
+            }
+
+            // In any case, solve the standard solve, for verification purposes
             solve_implicit(argv, K, F, M, cols, bw, beta, gamma);
-            print_pos_v(F, cols);
+            if (print_solution){
+                print_pos_v(F, cols);
+            }
         }
         else {
             cout << "Error, wrong number of args supplied for exercise 3" << endl;
@@ -103,7 +153,9 @@ int main(int argc, char* argv[]) {
         }
         solve_explicit_parallel(argv, K, F, M, cols, bw, rank, cores);
         if (rank == 0){
-            print_pos_v(F, cols);
+            if (print_solution){
+                print_pos_v(F, cols);
+            }
         }
     }
     if (ex == 5){
@@ -113,7 +165,9 @@ int main(int argc, char* argv[]) {
         }
         solve_implicit_parallel(argv, K, F, M, cols, bw, beta, gamma, rank, cores);
         if (rank == 0){
-            print_pos_v(F, cols);
+            if (print_solution){
+                print_pos_v(F, cols);
+            }
         }
     }
 

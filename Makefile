@@ -3,7 +3,7 @@ compile:
 	-L/usr/local/lib -llapack -lblas
 
 compile_mpi:
-	@mpicxx -std=c++11 main.cpp mat_builder.cpp helpers.cpp solve.cpp \
+	@mpicxx -std=c++11 main.cpp mat_builder.cpp helpers.cpp io.cpp solve.cpp \
 	solve_parallel.cpp -L/usr/local/lib -llapack -lblas -lscalapack-openmpi \
 	-lblacs-openmpi -lblacsCinit-openmpi
 
@@ -12,19 +12,19 @@ run1:
 	# Do things
 
 run2:
-	@./a.out 10000 24 12000 14400000 210000 2 1 100000 7850
+	@./a.out 10000 24 12000 14400000 210000 2 1 20000 7850
 	# Do things
 
 run3:
-	@./a.out 10000 24 12000 14400000 210000 3 1 100000 7850
+	@./a.out 10000 24 12000 14400000 210000 3 1 20000 7850
 	# Do things
 
 run4:
-	@mpiexec -np 4 ./a.out 10000 22 12000 14400000 210000 4 1 100000 7850
+	@mpiexec -np 4 ./a.out 10000 24 12000 14400000 210000 4 1 20000 7850
 	# Do things
 
 run5:
-	@mpiexec -np 4 ./a.out 10000 24 12000 14400000 210000 5 1 100000 7850
+	@mpiexec -np 4 ./a.out 10000 24 12000 14400000 210000 5 1 20000 7850
 	# Do things
 
 clean:

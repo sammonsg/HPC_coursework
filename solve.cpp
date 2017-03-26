@@ -7,6 +7,7 @@ using namespace std;
 #include "helpers.h"
 #include "mat_builder.h"
 #include "lapack_c.h"
+#include "io.h"
 
 void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double* tmp, double b_dt,
                       double b_dt2, double c_a0, int eqs, int K_rows, int* ipiv, int info);
@@ -22,12 +23,12 @@ void solve_static(double* K, double* F, int eqs, int bw){
 }
 
 void solve_iter(double* u_past, double* u_pres, double* F, double* F_ref, double* KM, double* M, double* M_inv,
-                double t, int rows, int eqs, int bw){
+                double t, double T_load, int rows, int eqs, int bw){
 
     // Overwrite the previous iteration's t-1 positions with the F vector
     F77NAME(dcopy) (eqs, F_ref, 1, F, 1);
     // and scale it by the iteration's time, but do not increase past t = 1.0s
-    F77NAME(dscal) (eqs, min(t, 1.0), F, 1);
+    F77NAME(dscal) (eqs, min(t/T_load, 1.0), F, 1);
 
     // Multiply the t+0 position by the KM matrix and add to the force vector
     F77NAME(dgbmv)('t', eqs, eqs, bw, bw, -1, KM, rows, u_pres, 1, 1, F, 1);
@@ -40,13 +41,13 @@ void solve_iter(double* u_past, double* u_pres, double* F, double* F_ref, double
     multiply_vectors(F, M_inv, eqs);
 }
 
-void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw){
+double solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw, double T_load = 1){
     // Get from args the core variables and recalculate values
     double l = atof(argv[1]) * 0.001 / atoi(argv[2]);
     const double A = atof(argv[3]) * pow(10, -6);
     const int rows = 2 * bw + 1;
     const double T = atof(argv[7]);
-    int iters = atof(argv[8]);
+    int iters = atoi(argv[8]);
     double t_step = T / iters;
     const double rho = atof(argv[9]);
 
@@ -55,6 +56,15 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     double* F = new double[eqs]();
     double* u_past = new double[eqs]();
     double* u_pres = new double[eqs]();
+
+
+    // Allocation for centre-point position logging
+    bool log_centre = false;
+    bool log_solution = false;
+
+    double* u_log = new double[iters]();
+    double u_min = 1e100;
+    double u_max = -1e100;
 
     // The M_ref matrix is unmultiplied by its factor rho * A * l, so it is copied and multiplied at this stage.
     // It gets also multiplied by 1 / ∆t^2 as all elements in the equation present this factor
@@ -75,18 +85,34 @@ void solve_explicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
         double t = iter * t_step;
 
         // Run encapsulated solver. It was encapsulated for use by the parallel explicit solver.
-        solve_iter(u_past, u_pres, F, F_ref, KM, M, M_inv, t, rows, eqs, bw);
+        solve_iter(u_past, u_pres, F, F_ref, KM, M, M_inv, t, T_load, rows, eqs, bw);
 
         // Instead of reallocating memory or inserting values in each vector, swap the pointers
         // to the arrays (which are of same size)
         shift_vec(u_past, u_pres, F);
+
+        // Log centrepoint position
+        u_log[iter] = u_pres[eqs/2];
+        if(t > T_load){
+            u_min = min(u_pres[eqs/2], u_min);
+            u_max = max(u_pres[eqs/2], u_max);
+        }
     }
+    if (log_centre) { write_v("u_centre_log", u_log, iters, 1, false); }
+
+    if (log_solution) { write_v("u_solution", u_pres, eqs/3, 3, true); }
+
+    // For the oscillatory study, return amplitude. OTHERWISE COMMENT OUT
+    // return (u_min-u_max);
 
     // As per exercise 1, write the solution to the F vector passed in by main()
     F77NAME(dcopy) (eqs, u_pres, 1, F_ref, 1);
+
+    return 0;
 }
 
-void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw, double bt, double gmm){
+double solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, int eqs, int bw, double bt, double gmm,
+                    double T_load = 1){
     // Get from args the core variables and recalculate values
     double l = atof(argv[1]) * 0.001 / atoi(argv[2]);
     const double A = atof(argv[3]) * pow(10, -6);
@@ -125,10 +151,16 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
     double* a0 = new double[eqs]();
     double* a1 = new double[eqs]();
 
+    // Temporary memory allocations necessary for implicit method. Faster to overwrite than allocate per-iteration
     double* temp = new double[eqs]();
     double* temp2 = new double[eqs * K_rows]();
+
+    //
     int* ipiv = new int[eqs]();
     int info = 0;
+
+    double u_min = 1e100;
+    double u_max = -1e100;
 
     for (int iter = 0; iter < iters + 1; iter++){
         double t = iter * dt;
@@ -136,7 +168,7 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
 
         F77NAME(dcopy) (eqs, F_ref, 1, temp, 1);
         // Scale by the time. Use min(t, 1) to get the effect of linearly increasing load until t=1 and then hold force
-        F77NAME(dscal) (eqs, min(t+dt,1.00), temp, 1);
+        F77NAME(dscal) (eqs, min(((t+dt)/T_load),1.0), temp, 1);
 
         // Calculate u(t+1) into temp and copy into u1
         u1_solve_routine(u0, v0, a0, temp, M, Keff, temp2, b_dt, b_dt2, c_a0, eqs, K_rows, ipiv, info);
@@ -160,8 +192,20 @@ void solve_implicit(char* argv[], double* K_ref, double* F_ref, double* M_ref, i
         if (info){
             break;
         }
+
+        if(t > T_load){
+            u_min = min(u0[eqs/2], u_min);
+            u_max = max(u0[eqs/2], u_max);
+        }
     }
+    cout << "Minimum " << u_min << "\tMaximum" << u_max << endl;
+
+    // For the oscillatory study, return amplitude. OTHERWISE COMMENT OUT
+    // return (u_max-u_min);
+
     F77NAME(dcopy) (eqs, u0, 1, F_ref, 1);
+
+    return 0;
 }
 
 void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, double* Keff, double* tmp,
@@ -170,7 +214,7 @@ void u1_solve_routine(double* u0, double* v0, double* a0, double* F, double* M, 
     for (int eq = 0; eq < eqs; eq++){
         F[eq] += M[eq] * (u0[eq] * b_dt2 + v0[eq] * b_dt + a0[eq] * c_a0);
     }
-    
+
     F77NAME(dcopy) (eqs * K_rows, Keff, 1, tmp, 1);
 
     // Solve the system into F

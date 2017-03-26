@@ -24,13 +24,8 @@ void print_banded_m(double* M, int rows, int cols){
     }
 }
 
-void clone_vector(double* master, double* target, int length){
-    for (int a = 0; a < length; a++){
-        target[a] = master[a];
-    }
-}
-
 void shift_vec(double*& pres, double*& futu){
+    // This is where big gains are made by just editing the pointer rather than perform copies
     double* temp = pres;
     pres = futu;
     futu = temp;
